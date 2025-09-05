@@ -48,7 +48,7 @@ def whatsapp_webhook():
     if not session:
         # Nova sessão
         sessions_ws.append_row([from_number, "menu_inicial", datetime.now().strftime("%d/%m/%Y %H:%M:%S"), ""])
-        msg.body("Olá! 👋 Bem-vindo à UBS dos Conjuntos".)
+        msg.body("Olá! 👋 Bem-vindo à UBS dos Conjuntos".
 
 Escolha uma opção:
 1️⃣ Agendar Eletro

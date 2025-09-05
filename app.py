@@ -8,7 +8,9 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Conectar ao Google Sheets
+# ===============================
+# Conexão com Google Sheets
+# ===============================
 def connect_sheets():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name(
@@ -33,9 +35,11 @@ def parse_date(date_str):
     except:
         return None
 
+# ===============================
+# Webhook do WhatsApp
+# ===============================
 @app.route("/webhook", methods=["POST"])
-def webhook_alias():
-    return whatsapp_webhook()
+def webhook():
     incoming_msg = request.values.get("Body", "").strip().lower()
     from_number = request.values.get("From", "").replace("whatsapp:", "")
 
@@ -66,6 +70,9 @@ def webhook_alias():
 
     etapa = session.get("ÚltimaEtapa", "menu_inicial")
 
+    # -----------------
+    # Fluxo principal
+    # -----------------
     if etapa == "menu_inicial":
         if "1" in incoming_msg or "eletro" in incoming_msg:
             slots = sheets["slots"].get_all_records()
@@ -113,6 +120,9 @@ def webhook_alias():
 
     return str(resp)
 
+# ===============================
+# Rota de lembretes (cron job)
+# ===============================
 @app.route("/cron/reminders", methods=["GET"])
 def cron_reminders():
     token = request.args.get("token")
@@ -136,5 +146,9 @@ def cron_reminders():
 
     return "OK", 200
 
-if __name__ == "_main_":
+# ===============================
+# Início da aplicação
+# ===============================
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+

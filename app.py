@@ -6,7 +6,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime, timedelta
 
-app = Flask(_name_)
+app = Flask(__name__)
 
 # Conectar ao Google Sheets
 def connect_sheets():

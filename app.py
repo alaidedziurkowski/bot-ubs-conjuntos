@@ -13,12 +13,15 @@ def connect_sheets():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
     client = gspread.authorize(creds)
-    sheet = client.open_by_key(os.environ["GOOGLE_SHEETS_KEY"])
+
+    # ID da sua planilha
+    sheet = client.open_by_key("1pn0N7YGLMGM83abwWNZsG3OBdC6aDMy-sINedlk67r8")
+
     return {
-          "consultas": sheet.worksheet("consultas"),
-    "ruas": sheet.worksheet("acs por rua"),
-    "slots": sheet.worksheet("horario disponivel para agendam"),
-    "sessions": sheet.worksheet("Página4")
+        "consultas": sheet.worksheet("consultas"),
+        "ruas": sheet.worksheet("acs por rua"),
+        "slots": sheet.worksheet("horario disponivel para agendam"),
+        "sessions": sheet.worksheet("Página4")
     }
 
 def parse_date(date_str):
@@ -41,22 +44,23 @@ def whatsapp_webhook():
     # Buscar sessão existente
     try:
         records = sessions_ws.get_all_records()
-        session = next((r for r in records if str(r["Telefone"]) == from_number), None)
+        session = next((r for r in records if str(r.get("Telefone")) == from_number), None)
     except:
         session = None
 
     if not session:
         # Nova sessão
         sessions_ws.append_row([from_number, "menu_inicial", datetime.now().strftime("%d/%m/%Y %H:%M:%S"), ""])
-        msg.body("Olá! 👋 Bem-vindo à UBS dos Conjuntos".
-
-Escolha uma opção:
-1️⃣ Agendar Eletro
-2️⃣ Agendar Preventivo
-3️⃣ Agendar Consulta")
+        msg.body(
+            "Olá! 👋 Bem-vindo à UBS dos Conjuntos.\n\n"
+            "Escolha uma opção:\n"
+            "1️⃣ Agendar Eletro\n"
+            "2️⃣ Agendar Preventivo\n"
+            "3️⃣ Agendar Consulta"
+        )
         return str(resp)
 
-    etapa = session["ÚltimaEtapa"]
+    etapa = session.get("ÚltimaEtapa", "menu_inicial")
     if etapa == "menu_inicial":
         if "1" in incoming_msg or "eletro" in incoming_msg:
             slots = sheets["slots"].get_all_records()
@@ -64,40 +68,38 @@ Escolha uma opção:
             if not livres:
                 msg.body("❌ Não há horários disponíveis para Eletro.")
             else:
-                texto = "Escolha um horário disponível para Eletro:
-"
+                texto = "Escolha um horário disponível para Eletro:\n"
                 for i, s in enumerate(livres[:5], start=1):
-                    texto += f"{i}️⃣ {s['Data']} {s['Hora']} - {s['Unidade']}
-"
+                    texto += f"{i}️⃣ {s['Data']} {s['Hora']} - {s['Unidade']}\n"
                 msg.body(texto)
-                sessions_ws.update_cell(session["row"], 2, "aguardando_escolha_eletro")
+                sessions_ws.append_row([from_number, "aguardando_escolha_eletro", datetime.now().strftime("%d/%m/%Y %H:%M:%S"), ""])
         elif "2" in incoming_msg or "preventivo" in incoming_msg:
             slots = sheets["slots"].get_all_records()
             livres = [s for s in slots if s["Tipo"].lower() == "preventivo" and s["Status"].lower() == "livre"]
             if not livres:
                 msg.body("❌ Não há horários disponíveis para Preventivo.")
             else:
-                texto = "Escolha um horário disponível para Preventivo:
-"
+                texto = "Escolha um horário disponível para Preventivo:\n"
                 for i, s in enumerate(livres[:5], start=1):
-                    texto += f"{i}️⃣ {s['Data']} {s['Hora']} - {s['Unidade']}
-"
+                    texto += f"{i}️⃣ {s['Data']} {s['Hora']} - {s['Unidade']}\n"
                 msg.body(texto)
-                sessions_ws.update_cell(session["row"], 2, "aguardando_escolha_preventivo")
+                sessions_ws.append_row([from_number, "aguardando_escolha_preventivo", datetime.now().strftime("%d/%m/%Y %H:%M:%S"), ""])
         elif "3" in incoming_msg or "consulta" in incoming_msg:
             msg.body("Digite o nome da sua rua para localizar o ACS responsável:")
-            sessions_ws.update_cell(session["row"], 2, "aguardando_rua")
+            sessions_ws.append_row([from_number, "aguardando_rua", datetime.now().strftime("%d/%m/%Y %H:%M:%S"), ""])
         else:
-            msg.body("Não entendi. Escolha uma opção:
-1️⃣ Agendar Eletro
-2️⃣ Agendar Preventivo
-3️⃣ Agendar Consulta")
+            msg.body(
+                "Não entendi. Escolha uma opção:\n"
+                "1️⃣ Agendar Eletro\n"
+                "2️⃣ Agendar Preventivo\n"
+                "3️⃣ Agendar Consulta"
+            )
     elif etapa == "aguardando_rua":
         ruas = sheets["ruas"].get_all_records()
         rua = next((r for r in ruas if r["Rua"].strip().lower() in incoming_msg), None)
         if rua:
             msg.body(f"O ACS responsável é {rua['ACS']} 📞 {rua['Telefone']}")
-            sessions_ws.update_cell(session["row"], 2, "finalizado")
+            sessions_ws.append_row([from_number, "finalizado", datetime.now().strftime("%d/%m/%Y %H:%M:%S"), ""])
         else:
             msg.body("Rua não encontrada. Tente novamente.")
 
@@ -120,7 +122,7 @@ def cron_reminders():
         hora = c["Hora"]
         dt_consulta = datetime.strptime(f"{c['Data']} {hora}", "%d/%m/%Y %H:%M")
         if dt_consulta - datetime.now() <= timedelta(hours=48) and c["Status"].lower() == "marcado":
-            # Enviar lembrete via Twilio (placeholder)
+            # Enviar lembrete via Twilio (aqui só imprime)
             print(f"Enviar lembrete para {c['Nome']} {c['Telefone']}")
             consultas_ws.update_cell(i, 9, "lembrete_enviado")  # coluna Status
 

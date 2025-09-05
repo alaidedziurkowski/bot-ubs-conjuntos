@@ -6,16 +6,18 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime, timedelta
 
-app = Flask(__name__)
+app = Flask(_name_)
 
 # Conectar ao Google Sheets
 def connect_sheets():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_name(
+        "/etc/secrets/evident-plane-452911-r3-4a5411571f01.json", scope
+    )
     client = gspread.authorize(creds)
 
     # ID da sua planilha
-    sheet = client.open_by_key("1pn0N7YGLMGM83abwWNZsG3OBdC6aDMy-sINedlk67r8")
+    sheet = client.open_by_key("1pn0N7YGLM9M3iabWWNZsG30BdC6aDMy-sINed1k67r8")
 
     return {
         "consultas": sheet.worksheet("consultas"),
@@ -24,6 +26,7 @@ def connect_sheets():
         "sessions": sheet.worksheet("Página4")
     }
 
+# Função auxiliar para converter datas
 def parse_date(date_str):
     try:
         return datetime.strptime(date_str, "%d/%m/%Y")
@@ -56,11 +59,12 @@ def whatsapp_webhook():
             "Escolha uma opção:\n"
             "1️⃣ Agendar Eletro\n"
             "2️⃣ Agendar Preventivo\n"
-            "3️⃣ Agendar Consulta"
+            "3️⃣ ACS responsável pela sua rua"
         )
         return str(resp)
 
     etapa = session.get("ÚltimaEtapa", "menu_inicial")
+
     if etapa == "menu_inicial":
         if "1" in incoming_msg or "eletro" in incoming_msg:
             slots = sheets["slots"].get_all_records()
@@ -73,6 +77,7 @@ def whatsapp_webhook():
                     texto += f"{i}️⃣ {s['Data']} {s['Hora']} - {s['Unidade']}\n"
                 msg.body(texto)
                 sessions_ws.append_row([from_number, "aguardando_escolha_eletro", datetime.now().strftime("%d/%m/%Y %H:%M:%S"), ""])
+
         elif "2" in incoming_msg or "preventivo" in incoming_msg:
             slots = sheets["slots"].get_all_records()
             livres = [s for s in slots if s["Tipo"].lower() == "preventivo" and s["Status"].lower() == "livre"]
@@ -84,7 +89,8 @@ def whatsapp_webhook():
                     texto += f"{i}️⃣ {s['Data']} {s['Hora']} - {s['Unidade']}\n"
                 msg.body(texto)
                 sessions_ws.append_row([from_number, "aguardando_escolha_preventivo", datetime.now().strftime("%d/%m/%Y %H:%M:%S"), ""])
-        elif "3" in incoming_msg or "consulta" in incoming_msg:
+
+        elif "3" in incoming_msg or "consulta" in incoming_msg or "acs" in incoming_msg:
             msg.body("Digite o nome da sua rua para localizar o ACS responsável:")
             sessions_ws.append_row([from_number, "aguardando_rua", datetime.now().strftime("%d/%m/%Y %H:%M:%S"), ""])
         else:
@@ -92,8 +98,9 @@ def whatsapp_webhook():
                 "Não entendi. Escolha uma opção:\n"
                 "1️⃣ Agendar Eletro\n"
                 "2️⃣ Agendar Preventivo\n"
-                "3️⃣ Agendar Consulta"
+                "3️⃣ ACS responsável pela sua rua"
             )
+
     elif etapa == "aguardando_rua":
         ruas = sheets["ruas"].get_all_records()
         rua = next((r for r in ruas if r["Rua"].strip().lower() in incoming_msg), None)
@@ -121,12 +128,12 @@ def cron_reminders():
             continue
         hora = c["Hora"]
         dt_consulta = datetime.strptime(f"{c['Data']} {hora}", "%d/%m/%Y %H:%M")
-        if dt_consulta - datetime.now() <= timedelta(hours=48) and c["Status"].lower() == "marcado":
-            # Enviar lembrete via Twilio (aqui só imprime)
-            print(f"Enviar lembrete para {c['Nome']} {c['Telefone']}")
+        if timedelta(hours=23) <= (dt_consulta - datetime.now()) <= timedelta(hours=25) and c["Status"].lower() == "marcado":
+            # Enviar lembrete via Twilio (aqui só imprime no log por enquanto)
+            print(f"📢 Lembrete: {c['Nome']} ({c['Telefone']}) tem consulta em {c['Unidade']} no dia {c['Data']} às {c['Hora']}")
             consultas_ws.update_cell(i, 9, "lembrete_enviado")  # coluna Status
 
     return "OK", 200
 
-if __name__ == "__main__":
+if _name_ == "_main_":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))

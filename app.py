@@ -33,8 +33,9 @@ def parse_date(date_str):
     except:
         return None
 
-@app.route("/webhook/whatsapp", methods=["POST"])
-def whatsapp_webhook():
+@app.route("/webhook", methods=["POST"])
+def webhook_alias():
+    return whatsapp_webhook()
     incoming_msg = request.values.get("Body", "").strip().lower()
     from_number = request.values.get("From", "").replace("whatsapp:", "")
 

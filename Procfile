@@ -1,1 +1,1 @@
-web: gunicorn apicativo:app
+web: gunicorn aplicativo:app

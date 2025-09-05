@@ -135,5 +135,5 @@ def cron_reminders():
 
     return "OK", 200
 
-if _name_ == "_main_":
+if __name__ == "_main_":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))

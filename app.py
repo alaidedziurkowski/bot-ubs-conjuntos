@@ -15,10 +15,10 @@ def connect_sheets():
     client = gspread.authorize(creds)
     sheet = client.open_by_key(os.environ["GOOGLE_SHEETS_KEY"])
     return {
-        "consultas": sheet.worksheet("Consultas"),
-        "ruas": sheet.worksheet("Ruas_ACS"),
-        "slots": sheet.worksheet("Slots_Exames"),
-        "sessions": sheet.worksheet("Sessions")
+          "consultas": sheet.worksheet("consultas"),
+    "ruas": sheet.worksheet("acs por rua"),
+    "slots": sheet.worksheet("horario disponivel para agendam"),
+    "sessions": sheet.worksheet("Página4")
     }
 
 def parse_date(date_str):
